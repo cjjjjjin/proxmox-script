@@ -20,6 +20,7 @@ color
 catch_errors
 var_install="docker-install"
 
+DEV_ENV_ROOT_PASSWORD="${DEV_ENV_ROOT_PASSWORD:-debian}"
 if [[ -n "${DEV_ENV_ROOT_PASSWORD:-}" ]]; then
   if [[ "$DEV_ENV_ROOT_PASSWORD" == *" "* ]]; then
     msg_error "DEV_ENV_ROOT_PASSWORD cannot contain spaces."
