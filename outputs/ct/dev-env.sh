@@ -101,7 +101,7 @@ function install_dev_tools_after_docker() {
   fi
 
   msg_info "Installing Python tooling, uv, and Node.js LTS"
-  pct exec "$_ctid" -- bash -c '
+  $STD pct exec "$_ctid" -- bash -c '
 set -e
 
 apt-get update
@@ -124,8 +124,15 @@ ln -sf /root/.local/bin/uv /usr/local/bin/uv
 ln -sf /root/.local/bin/uvx /usr/local/bin/uvx
 
 export NVM_DIR="/root/.nvm"
+NVM_VERSION="v0.40.3"
 mkdir -p "$NVM_DIR"
-curl -fsSL https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.3/install.sh | bash
+curl -fsSL "https://github.com/nvm-sh/nvm/archive/refs/tags/${NVM_VERSION}.tar.gz" -o /tmp/nvm.tar.gz
+tar -xzf /tmp/nvm.tar.gz -C "$NVM_DIR" --strip-components=1
+rm -f /tmp/nvm.tar.gz
+if [ ! -s "$NVM_DIR/nvm.sh" ]; then
+  echo "nvm.sh was not installed at $NVM_DIR/nvm.sh" >&2
+  exit 127
+fi
 . "$NVM_DIR/nvm.sh"
 nvm install --lts
 nvm alias default "lts/*"
