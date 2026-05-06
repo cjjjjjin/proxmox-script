@@ -1,8 +1,9 @@
 #!/usr/bin/env bash
-source <(curl -fsSL https://raw.githubusercontent.com/community-scripts/ProxmoxVE/main/misc/build.func)
+SCRIPT_REPO_BASE="${SCRIPT_REPO_BASE:-https://raw.githubusercontent.com/cjjjjjin/proxmox-script/main/outputs}"
+source <(curl -fsSL "${SCRIPT_REPO_BASE}/misc/build.func")
 # Copyright (c) 2026
 # License: MIT
-# Source: https://github.com/community-scripts/ProxmoxVE
+# Source: https://github.com/cjjjjjin/proxmox-script
 
 APP="Dev-Env"
 var_tags="${var_tags:-docker;python;node;development}"
@@ -17,6 +18,15 @@ header_info "$APP"
 variables
 color
 catch_errors
+var_install="docker-install"
+
+if [[ -n "${DEV_ENV_ROOT_PASSWORD:-}" ]]; then
+  if [[ "$DEV_ENV_ROOT_PASSWORD" == *" "* ]]; then
+    msg_error "DEV_ENV_ROOT_PASSWORD cannot contain spaces."
+    exit 1
+  fi
+  PW="--password $DEV_ENV_ROOT_PASSWORD"
+fi
 
 function update_script() {
   header_info
@@ -82,8 +92,65 @@ function update_script() {
   exit
 }
 
+function install_dev_tools_after_docker() {
+  local _ctid="${CTID:-${CT_ID:-}}"
+
+  if [[ -z "$_ctid" ]]; then
+    msg_error "Unable to determine CTID for post-Docker development tooling install."
+    exit 1
+  fi
+
+  msg_info "Installing Python tooling, uv, and Node.js LTS"
+  pct exec "$_ctid" -- bash -c '
+set -e
+
+apt-get update
+apt-get install -y \
+  build-essential \
+  ca-certificates \
+  curl \
+  git \
+  jq \
+  pipx \
+  python3 \
+  python3-pip \
+  python3-venv \
+  sudo \
+  unzip \
+  wget
+
+curl -LsSf https://astral.sh/uv/install.sh | sh
+ln -sf /root/.local/bin/uv /usr/local/bin/uv
+ln -sf /root/.local/bin/uvx /usr/local/bin/uvx
+
+export NVM_DIR="/root/.nvm"
+mkdir -p "$NVM_DIR"
+curl -fsSL https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.3/install.sh | bash
+. "$NVM_DIR/nvm.sh"
+nvm install --lts
+nvm alias default "lts/*"
+nvm use default
+
+cat >/etc/profile.d/nvm.sh <<NVM_PROFILE
+export NVM_DIR="/root/.nvm"
+[ -s "/root/.nvm/nvm.sh" ] && . "/root/.nvm/nvm.sh"
+[ -s "/root/.nvm/bash_completion" ] && . "/root/.nvm/bash_completion"
+NVM_PROFILE
+
+docker --version
+docker compose version
+python3 --version
+uv --version
+. /etc/profile.d/nvm.sh
+node --version
+npm --version
+'
+  msg_ok "Installed Python tooling, uv, and Node.js LTS"
+}
+
 start
 build_container
+install_dev_tools_after_docker
 description
 
 msg_ok "Completed successfully!\n"

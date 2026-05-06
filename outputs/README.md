@@ -6,19 +6,50 @@ This session contains a community-scripts-style Proxmox LXC helper pair for a De
 
 | Path | Purpose |
 | --- | --- |
-| `ct/dev-env.sh` | Proxmox host-side LXC creation script. |
-| `install/dev-env-install.sh` | In-container installer script. |
+| `ct/dev-env.sh` | Proxmox host-side LXC creation script. Uses the vendored Docker installer, then installs Python/uv/Node tooling with `pct exec`. |
+| `misc/` | Vendored community-scripts runtime functions with raw URLs rewritten to this repository. |
+| `install/docker-install.sh` | Vendored Docker installer used by `build.func` through `var_install="docker-install"`. |
+| `install/dev-env-install.sh` | Repo-ready in-container installer variant if you decide to maintain this as a full two-file script later. The current `ct/dev-env.sh` does not depend on this file. |
 
 ## Execution Model
 
-These files are repo-ready community-scripts-style files. They are designed to be placed into a `community-scripts/ProxmoxVE`-style repository at matching paths:
+`ct/dev-env.sh` is designed to run from:
 
-- `ct/dev-env.sh`
-- `install/dev-env-install.sh`
+```text
+https://raw.githubusercontent.com/cjjjjjin/proxmox-script/main/outputs/ct/dev-env.sh
+```
 
-The host-side script sources upstream `misc/build.func`, and that function fetches the installer from the repository's `install/${app}-install.sh` path during container creation. If you run `ct/dev-env.sh` locally without hosting or adding the matching installer file to the same script repository flow, Proxmox will not be able to fetch `install/dev-env-install.sh`.
+By default it sets:
 
-For a private fork, either merge both files into the fork and adjust the fetched `build.func`/installer source flow to the fork, or submit the pair through the normal community-scripts development flow.
+```bash
+SCRIPT_REPO_BASE="https://raw.githubusercontent.com/cjjjjjin/proxmox-script/main/outputs"
+```
+
+All vendored runtime fetches should resolve under that base URL.
+
+It works by:
+
+1. Loading `misc/build.func` from this repository.
+2. Using this repository's `install/docker-install.sh` for Docker, Portainer, and Docker TCP socket prompts.
+3. Running a post-Docker `pct exec` step to install Python tooling, `uv`, `nvm`, and Node.js LTS.
+
+You can override the raw base URL for testing another branch or fork:
+
+```bash
+SCRIPT_REPO_BASE='https://raw.githubusercontent.com/cjjjjjin/proxmox-script/my-branch/outputs' \
+  bash -c "$(curl -fsSL https://raw.githubusercontent.com/cjjjjjin/proxmox-script/main/outputs/ct/dev-env.sh)"
+```
+
+## Root Password Automation
+
+To predefine the root password without editing the script:
+
+```bash
+DEV_ENV_ROOT_PASSWORD='your-password' \
+  bash -c "$(curl -fsSL https://raw.githubusercontent.com/cjjjjjin/proxmox-script/main/outputs/ct/dev-env.sh)"
+```
+
+Passwords containing spaces are rejected to match the upstream password handling constraints.
 
 ## Defaults
 

@@ -60,6 +60,18 @@ Docker TCP socket exposure is intentionally optional and disabled by default bec
 - In-container installer script.
 - Usage README with execution, verification, and security notes.
 
-## Execution Constraint
+## Execution Model
 
-The host-side script uses upstream `misc/build.func`. That function fetches the in-container installer from `install/${app}-install.sh` in the community-scripts repository flow. Therefore the deliverables are intended as repo-ready files placed at matching `ct/` and `install/` paths, not as a standalone local script pair.
+The host-side script uses vendored `outputs/misc/build.func` from the private repository raw base, and overrides `var_install` to `docker-install`. This avoids a 404 when `dev-env-install.sh` does not exist in upstream `community-scripts/ProxmoxVE`.
+
+After the vendored Docker installer completes, the host-side script runs a `pct exec` post-install step to add Python tooling, `uv`, `nvm`, and Node.js LTS.
+
+The separate `install/dev-env-install.sh` remains a repo-ready variant for a private fork or future upstream-style contribution, but the standalone `ct/dev-env.sh` no longer depends on it.
+
+The default raw base is:
+
+```text
+https://raw.githubusercontent.com/cjjjjjin/proxmox-script/main/outputs
+```
+
+It can be overridden at runtime with `SCRIPT_REPO_BASE`.
